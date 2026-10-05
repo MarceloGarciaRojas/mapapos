@@ -1,0 +1,2625 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Mapa POS Tienda</title>
+  <style>
+    :root {
+      --bg-main: #f3f4f6;
+      --bg-panel: #ffffff;
+      --accent: #2563eb;
+      --accent-soft: #dbeafe;
+      --border-soft: #e5e7eb;
+      --text-main: #111827;
+      --text-muted: #6b7280;
+
+      /* ✅ Estados originales + estacional */
+      --green: #16a34a;    /* habilitado */
+      --red: #dc2626;      /* deshabilitado */
+      --orange: #f97316;   /* estacional */
+
+      --shadow-soft: 0 10px 25px rgba(15, 23, 42, 0.08);
+      --radius-lg: 16px;
+      --radius-md: 10px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top left, #e5e7eb, #f9fafb);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+    }
+
+    .app-shell {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      width: 100%;
+      max-width: 1600px;
+      padding: 12px;
+      gap: 10px;
+      position: relative;
+    }
+
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.98);
+      border-radius: 20px;
+      padding: 10px 18px;
+      box-shadow: var(--shadow-soft);
+      backdrop-filter: blur(10px);
+      position: relative;
+      z-index: 5000;
+    }
+
+    .app-title {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .app-title h1 {
+      margin: 0;
+      font-size: 19px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .app-title span.badge {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 600;
+      align-self: flex-start;
+    }
+
+    .top-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .stats {
+      display: flex;
+      gap: 8px;
+      font-size: 13px;
+      flex-wrap: wrap;
+    }
+
+    .stat-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 11px;
+      border-radius: 999px;
+      background: var(--bg-main);
+      border: 1px solid var(--border-soft);
+      font-weight: 500;
+    }
+
+    .stat-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 999px;
+    }
+    .stat-dot.green { background: var(--green); }
+    .stat-dot.red { background: var(--red); }
+    .stat-dot.orange { background: var(--orange); }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .btn-primary {
+      border: none;
+      outline: none;
+      border-radius: 999px;
+      padding: 7px 15px;
+      background: var(--accent);
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+      transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+      white-space: nowrap;
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 25px rgba(37, 99, 235, 0.45);
+      background: #1d4ed8;
+    }
+
+    .btn-secondary {
+      border-radius: 999px;
+      border: 1px solid var(--border-soft);
+      background: #fff;
+      font-size: 12px;
+      padding: 6px 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+
+    .btn-small {
+      border-radius: 999px;
+      border: 1px solid var(--border-soft);
+      background: #fff;
+      font-size: 11px;
+      padding: 4px 10px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--text-main);
+      white-space: nowrap;
+    }
+
+    /* ===== Panel buscador POS ===== */
+    .search-panel {
+      position: fixed;
+      top: 80px;
+      right: 32px;
+      width: 260px;
+      background: #ffffff;
+      border-radius: 14px;
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.35);
+      border: 1px solid var(--border-soft);
+      padding: 10px 12px;
+      font-size: 12px;
+      display: none;
+      z-index: 9999;
+    }
+    .search-panel.show { display: block; }
+
+    .search-panel h3 { margin: 0 0 6px; font-size: 13px; }
+    .search-panel .search-row { display: flex; gap: 6px; align-items: center; }
+    .search-panel input {
+      flex: 1;
+      border-radius: 10px;
+      border: 1px solid var(--border-soft);
+      padding: 7px 9px;
+      font-size: 12px;
+      outline: none;
+      background: #f9fafb;
+      transition: border 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    }
+    .search-panel input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25);
+      background: #ffffff;
+    }
+    .search-hint {
+      margin-top: 6px;
+      color: var(--text-muted);
+      font-size: 11px;
+      line-height: 1.2;
+    }
+
+    /* ===== Panel Configuración POS ===== */
+    .config-panel {
+      position: fixed;
+      top: 80px;
+      right: 32px;
+      width: 280px;
+      max-width: 86vw;
+      background: #ffffff;
+      border-radius: 14px;
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.35);
+      border: 1px solid var(--border-soft);
+      padding: 10px 12px;
+      font-size: 12px;
+      display: none;
+      z-index: 9999;
+    }
+    .config-panel.show { display: block; }
+    .config-panel h3 { margin: 0 0 6px; font-size: 13px; }
+
+    .config-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      margin-top: 8px;
+    }
+    .config-group label { font-weight: 600; }
+    .config-group select {
+      border-radius: 10px;
+      border: 1px solid var(--border-soft);
+      padding: 7px 9px;
+      font-size: 12px;
+      outline: none;
+      background: #f9fafb;
+    }
+    .config-group select:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25);
+      background: #ffffff;
+    }
+    .config-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    /* ===== POS ICON (tamaño / letra) ===== */
+    .pos-icon {
+      position: absolute;
+
+      --pos-minw: 30px;
+      --pos-maxw: 42px;
+      --pos-pad-x: 4px;
+      --pos-pad-y: 3px;
+
+      --pos-brand-size: 9px;
+      --pos-mid-size: 9px;
+      --pos-footer-size: 7px;
+
+      min-width: var(--pos-minw);
+      max-width: var(--pos-maxw);
+      padding: var(--pos-pad-y) var(--pos-pad-x) 2px;
+
+      border-radius: 6px;
+      border: 2px solid;
+      background: rgba(255, 255, 255, 0.96);
+      box-shadow: 0 3px 6px rgba(15, 23, 42, 0.2);
+      transform: translate(-50%, -50%);
+      text-align: center;
+      cursor: grab;
+      user-select: none;
+      z-index: 50;
+    }
+
+    .pos-icon.size-sm {
+      --pos-minw: 24px;
+      --pos-maxw: 34px;
+      --pos-pad-x: 3px;
+      --pos-pad-y: 2px;
+      border-radius: 6px;
+    }
+    .pos-icon.size-md {
+      --pos-minw: 30px;
+      --pos-maxw: 42px;
+      --pos-pad-x: 4px;
+      --pos-pad-y: 3px;
+      border-radius: 6px;
+    }
+    .pos-icon.size-lg {
+      --pos-minw: 38px;
+      --pos-maxw: 56px;
+      --pos-pad-x: 6px;
+      --pos-pad-y: 4px;
+      border-radius: 8px;
+    }
+
+    .pos-icon.font-sm {
+      --pos-brand-size: 8px;
+      --pos-mid-size: 8px;
+      --pos-footer-size: 6px;
+    }
+    .pos-icon.font-md {
+      --pos-brand-size: 9px;
+      --pos-mid-size: 9px;
+      --pos-footer-size: 7px;
+    }
+    .pos-icon.font-lg {
+      --pos-brand-size: 11px;
+      --pos-mid-size: 11px;
+      --pos-footer-size: 9px;
+    }
+
+    /* ✅ Estados POS: habilitado/deshabilitado + estacional */
+    .pos-icon.habilitado { border-color: var(--green); }
+    .pos-icon.deshabilitado { border-color: var(--red); }
+    .pos-icon.estacional { border-color: var(--orange); }
+
+    .pos-brand {
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      font-size: var(--pos-brand-size);
+      line-height: 1.05;
+    }
+
+    .pos-mid {
+      font-weight: 500;
+      font-size: var(--pos-mid-size);
+      line-height: 1.05;
+      margin-top: 1px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .pos-footer {
+      margin-top: 2px;
+      padding-top: 2px;
+      border-top: 1px solid rgba(148, 163, 184, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      font-size: var(--pos-footer-size);
+      color: var(--text-muted);
+      line-height: 1;
+    }
+
+    .pos-status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      flex: 0 0 auto;
+    }
+    .pos-status-dot.habilitado { background: var(--green); }
+    .pos-status-dot.deshabilitado { background: var(--red); }
+    .pos-status-dot.estacional { background: var(--orange); }
+
+    .pos-icon.dragging {
+      opacity: 0.85;
+      cursor: grabbing;
+      box-shadow: 0 10px 22px rgba(15, 23, 42, 0.4);
+    }
+
+    /* ===== HIGHLIGHT (amarillo 5s) ===== */
+    @keyframes posGlow {
+      0% {
+        box-shadow: 0 0 0 rgba(250, 204, 21, 0);
+        transform: translate(-50%, -50%) scale(1);
+      }
+      10% {
+        box-shadow:
+          0 0 12px rgba(250, 204, 21, 0.9),
+          0 0 28px rgba(250, 204, 21, 0.7),
+          0 0 48px rgba(250, 204, 21, 0.4);
+        transform: translate(-50%, -50%) scale(1.1);
+      }
+      70% {
+        box-shadow:
+          0 0 18px rgba(250, 204, 21, 0.8),
+          0 0 36px rgba(250, 204, 21, 0.5);
+      }
+      100% {
+        box-shadow: 0 0 0 rgba(250, 204, 21, 0);
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+    .pos-icon.highlight {
+      z-index: 3000;
+      animation: posGlow 5s ease-in-out;
+    }
+
+    /* ===== ELEMENT ICONS ===== */
+    .element-icon {
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      border: 2px solid #6b7280;
+      background: #ffffff;
+      box-shadow: 0 3px 6px rgba(15, 23, 42, 0.2);
+      transform: translate(-50%, -50%);
+      font-size: 9px;
+      text-align: center;
+      cursor: grab;
+      user-select: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 500;
+      z-index: 40;
+    }
+    .element-icon.enabled.type-cp { background: #fb923c; border-color: #f97316; color: #111827; }
+    .element-icon.enabled.type-kiosco { background: #bfdbfe; border-color: #3b82f6; color: #1e3a8a; }
+    .element-icon.enabled.type-cav { background: #e9d5ff; border-color: #a855f7; color: #581c87; }
+    .element-icon.enabled.type-mef { background: #fed7aa; border-color: #92400e; color: #3b1f0a; }
+    .element-icon.enabled.type-pr { background: #d1fae5; border-color: #16a34a; color: #064e3b; }
+    .element-icon.disabled { background: #fee2e2; border-color: #dc2626; color: #7f1d1d; }
+
+    .pos-tooltip {
+      position: absolute;
+      z-index: 9999;
+      max-width: 230px;
+      background: #0f172a;
+      color: #e5e7eb;
+      padding: 7px 9px;
+      border-radius: 10px;
+      font-size: 10px;
+      box-shadow: 0 18px 35px rgba(15, 23, 42, 0.75);
+      top: 0;
+      left: 0;
+      transform: translate(-50%, -100%);
+      pointer-events: auto;
+    }
+
+    .pos-tooltip h4 {
+      margin: 0 0 3px;
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #c7d2fe;
+    }
+    .pos-tooltip-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      margin-bottom: 2px;
+    }
+    .pos-tooltip-row span.label { color: #9ca3af; }
+
+    .pos-tooltip-actions {
+      margin-top: 4px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 4px;
+    }
+
+    .btn-mini {
+      border-radius: 999px;
+      border: 1px solid #4b5563;
+      background: #111827;
+      color: #e5e7eb;
+      font-size: 9px;
+      padding: 3px 7px;
+      cursor: pointer;
+    }
+    .btn-mini.danger {
+      border-color: #b91c1c;
+      background: #7f1d1d;
+      color: #fee2e2;
+    }
+
+    .app-main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    .map-panel {
+      flex: 1;
+      background: #f9fafb;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-soft);
+      box-shadow: var(--shadow-soft);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .map-header {
+      padding: 6px 12px;
+      font-size: 12px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border-soft);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    .map-header span.floor-name {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .map-area {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+      background: #e5e7eb;
+    }
+
+    .map-inner {
+      position: relative;
+      margin: 12px;
+      background-color: #f4f4f5;
+      border-radius: var(--radius-md);
+      width: calc(100% - 24px);
+      height: calc(100% - 24px);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .map-inner img {
+      max-width: 100%;
+      max-height: 100%;
+      height: auto;
+      width: auto;
+      user-select: none;
+      pointer-events: none;
+    }
+
+    .map-inner.placeholder {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px dashed var(--border-soft);
+      background: repeating-linear-gradient(
+        45deg,
+        #f9fafb,
+        #f9fafb 10px,
+        #f3f4f6 10px,
+        #f3f4f6 20px
+      );
+      color: var(--text-muted);
+      font-size: 13px;
+    }
+
+    .summary-panel {
+      position: absolute;
+      top: 64px;
+      left: 16px;
+      z-index: 1800;
+      background: rgba(255, 255, 255, 0.95);
+      border-radius: 12px;
+      border: 1px solid var(--border-soft);
+      box-shadow: 0 10px 25px rgba(15, 23, 42, 0.25);
+      padding: 8px 10px;
+      font-size: 11px;
+      min-width: 140px;
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease;
+    }
+
+    .summary-panel:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 14px 30px rgba(15, 23, 42, 0.30);
+      border-color: rgba(37, 99, 235, 0.35);
+      background: rgba(255, 255, 255, 0.99);
+    }
+
+    .summary-panel:active { transform: translateY(0) scale(0.99); }
+    .summary-title { font-weight: 700; font-size: 11px; margin-bottom: 4px; color: var(--text-main); }
+    .summary-section { margin-bottom: 6px; }
+    .summary-section:last-child { margin-bottom: 0; }
+    .summary-row { display: flex; justify-content: space-between; gap: 8px; margin: 1px 0; color: var(--text-muted); }
+    .summary-row strong { color: var(--text-main); }
+
+    /* ===== Detalle general por piso ===== */
+    .detail-table-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 12000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      background: rgba(15, 23, 42, 0.12);
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.28s ease, backdrop-filter 0.28s ease, background 0.28s ease;
+    }
+
+    .detail-table-backdrop.show {
+      opacity: 1;
+      pointer-events: auto;
+      background: rgba(15, 23, 42, 0.22);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+
+    .detail-table-modal {
+      width: min(1050px, 96vw);
+      max-height: 84vh;
+      display: flex;
+      flex-direction: column;
+      background: rgba(255,255,255,0.98);
+      border: 1px solid rgba(229, 231, 235, 0.95);
+      border-radius: 20px;
+      box-shadow: 0 28px 70px rgba(15, 23, 42, 0.30);
+      overflow: hidden;
+      transform: translateY(14px) scale(0.985);
+      transition: transform 0.28s cubic-bezier(.2,.8,.2,1);
+    }
+
+    .detail-table-backdrop.show .detail-table-modal { transform: translateY(0) scale(1); }
+
+    .detail-table-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 18px 13px;
+      border-bottom: 1px solid var(--border-soft);
+    }
+
+    .detail-table-heading { display: flex; flex-direction: column; gap: 3px; }
+    .detail-table-heading h2 { margin: 0; font-size: 16px; }
+    .detail-table-heading span { font-size: 11px; color: var(--text-muted); }
+
+    .detail-table-close {
+      width: 32px;
+      height: 32px;
+      border: 1px solid var(--border-soft);
+      border-radius: 999px;
+      background: #fff;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 15px;
+      transition: transform 0.16s ease, background 0.16s ease, color 0.16s ease;
+    }
+    .detail-table-close:hover { transform: rotate(5deg) scale(1.04); background: #f3f4f6; color: var(--text-main); }
+
+    .detail-table-scroll { overflow: auto; padding: 0 12px 14px; }
+    .detail-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 12px;
+      min-width: 650px;
+    }
+    .detail-table th,
+    .detail-table td {
+      padding: 9px 10px;
+      border-bottom: 1px solid #eef0f3;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .detail-table th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: rgba(249, 250, 251, 0.98);
+      color: var(--text-muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      font-weight: 700;
+    }
+    .detail-table th:first-child,
+    .detail-table td:first-child { text-align: left; }
+    .detail-table tbody tr { transition: background 0.14s ease; }
+    .detail-table tbody tr:hover { background: #f8fafc; }
+    .detail-table td:first-child { font-weight: 600; color: var(--text-main); }
+    .detail-table td:last-child { font-weight: 800; color: var(--accent); }
+
+    .state-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      background: #f3f4f6;
+      color: var(--text-muted);
+    }
+    .state-pill::before { content: ""; width: 6px; height: 6px; border-radius: 999px; background: #9ca3af; }
+    .state-pill.habilitado::before { background: var(--green); }
+    .state-pill.deshabilitado::before { background: var(--red); }
+    .state-pill.estacional::before { background: var(--orange); }
+
+    .detail-empty { padding: 26px 14px; text-align: center; color: var(--text-muted); font-size: 12px; }
+
+    .floor-tabs {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(255, 255, 255, 0.96);
+      border-radius: 16px;
+      padding: 6px 10px;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .floor-tab-list { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .floor-tab {
+      position: relative;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      background: transparent;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+    }
+    .floor-tab.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--text-main);
+      font-weight: 600;
+    }
+
+    .filter-panel {
+      position: fixed;
+      top: 56px;
+      right: 56px;
+      width: 260px;
+      max-width: 80vw;
+      background: #ffffff;
+      border-radius: 14px;
+      box-shadow: 0 20px 40px rgba(15, 23, 42, 0.35);
+      border: 1px solid var(--border-soft);
+      padding: 10px 12px;
+      font-size: 12px;
+      display: none;
+      z-index: 9999;
+    }
+    .filter-panel.show { display: block; }
+    .filter-panel h3 { margin: 0 0 6px; font-size: 13px; }
+    .filter-panel .filter-group { display: flex; flex-direction: column; gap: 3px; margin-top: 4px; }
+    .filter-panel .filter-group label { font-weight: 500; }
+    .filter-panel select {
+      border-radius: 8px;
+      border: 1px solid var(--border-soft);
+      padding: 4px 6px;
+      font-size: 12px;
+      background: #f9fafb;
+    }
+    .filter-panel-footer { display: flex; justify-content: flex-end; gap: 6px; margin-top: 8px; }
+
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.02);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      opacity: 0;
+      pointer-events: none;
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
+      transition: opacity 0.35s ease, backdrop-filter 0.35s ease, background 0.35s ease;
+    }
+    .modal-backdrop.show {
+      opacity: 1;
+      pointer-events: auto;
+      backdrop-filter: blur(3px);
+      -webkit-backdrop-filter: blur(8px);
+      background: rgba(148, 163, 184, 0.10);
+    }
+
+    .modal {
+      background: #ffffff;
+      border-radius: 18px;
+      box-shadow: 0 25px 60px rgba(15, 23, 42, 0.55);
+      width: 320px;
+      max-width: 90vw;
+      padding: 14px 16px 12px;
+    }
+
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .modal-header h2 { margin: 0; font-size: 15px; display: flex; align-items: center; gap: 6px; }
+    .modal-header button { border: none; background: transparent; cursor: pointer; font-size: 16px; color: var(--text-muted); }
+
+    .form-group { display: flex; flex-direction: column; gap: 4px; margin-top: 6px; font-size: 12px; }
+    .form-group label { font-weight: 500; }
+    .form-group select, .form-group input[type="number"] {
+      border-radius: 10px;
+      border: 1px solid var(--border-soft);
+      padding: 7px 9px;
+      font-size: 12px;
+      outline: none;
+      background: #f9fafb;
+      transition: border 0.12s ease, box-shadow 0.12s ease, background 0.12s ease;
+    }
+    .form-group select:focus, .form-group input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 1px rgba(37, 99, 235, 0.25);
+      background: #ffffff;
+    }
+
+    .form-inline { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; }
+    .form-inline input[type="checkbox"] { width: 14px; height: 14px; cursor: pointer; }
+
+    .modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
+
+    .btn-ghost {
+      border-radius: 999px;
+      border: 1px solid var(--border-soft);
+      background: transparent;
+      font-size: 12px;
+      padding: 6px 12px;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div class="app-title">
+        <h1>Mapa de POS Paris</h1>
+        <span class="badge">TxD · Marcelo García</span>
+      </div>
+
+      <div class="top-right">
+        <div class="stats">
+          <div class="stat-chip" id="stat-habilitado">
+            <span class="stat-dot green"></span>
+            <span>Habilitados: <strong>0</strong></span>
+          </div>
+          <div class="stat-chip" id="stat-deshabilitado">
+            <span class="stat-dot red"></span>
+            <span>Deshabilitados: <strong>0</strong></span>
+          </div>
+          <div class="stat-chip" id="stat-estacional">
+            <span class="stat-dot orange"></span>
+            <span>Estacionales: <strong>0</strong></span>
+          </div>
+        </div>
+
+        <div class="actions" id="actionsBar">
+          <button class="btn-secondary" id="btnUploadBg">📄 Cargar plano</button>
+          <input type="file" id="bgUploader" accept="image/*" hidden />
+          <button class="btn-secondary" id="btnExportState">⭳ Exportar</button>
+          <button class="btn-secondary" id="btnImportState">⭱ Importar</button>
+          <input type="file" id="importFile" accept="application/json" hidden />
+          <button class="btn-secondary" id="btnFilter">Filtro POS ▾</button>
+          <button class="btn-secondary" id="btnElementFilter">Filtro elemento ▾</button>
+
+          <button class="btn-secondary" id="btnPosSearch" title="Buscar POS">🔎</button>
+
+          <button class="btn-secondary" id="btnOpenElementModal">💠​Nuevo elemento</button>
+
+          <button class="btn-primary" id="btnOpenModal">＋ Nuevo POS</button>
+          <button class="btn-secondary" id="btnPosConfig" title="Configurar íconos POS">⚙️</button>
+
+          <div class="search-panel" id="searchPanel">
+            <h3>Buscar POS por número</h3>
+            <div class="search-row">
+              <input id="posSearchInput" type="number" min="0" max="999" placeholder="Ej: 38" />
+              <button class="btn-small" id="btnPosSearchGo">Buscar</button>
+            </div>
+            <div class="search-hint">
+              Tip: presiona <strong>Enter</strong> para buscar.<br/>
+              Si está en otro piso, te lleva automáticamente.
+            </div>
+          </div>
+
+          <div class="config-panel" id="configPanel">
+            <h3>Configuración íconos POS</h3>
+
+            <div class="config-group">
+              <label for="cfgPosMidField">Dato visible (línea 2)</label>
+              <select id="cfgPosMidField">
+                <option value="brand">Marca</option>
+                <option value="number">Número</option>
+                <option value="tipo">Tipo de caja</option>
+                <option value="perfil">Perfil</option>
+                <option value="factura">Factura (F)</option>
+              </select>
+            </div>
+
+            <div class="config-group">
+              <label for="cfgPosIconSize">Tamaño del ícono</label>
+              <select id="cfgPosIconSize">
+                <option value="sm">Pequeño</option>
+                <option value="md">Mediano</option>
+                <option value="lg">Grande</option>
+              </select>
+            </div>
+
+            <div class="config-group">
+              <label for="cfgPosFontSize">Tamaño de letra</label>
+              <select id="cfgPosFontSize">
+                <option value="sm">Pequeño</option>
+                <option value="md">Mediano</option>
+                <option value="lg">Grande</option>
+              </select>
+            </div>
+
+            <div class="config-footer">
+              <button class="btn-small" id="btnCfgReset">Restablecer</button>
+              <button class="btn-primary" id="btnCfgApply">Aplicar</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </header>
+
+    <main class="app-main">
+      <div class="map-panel">
+        <div class="map-header">
+          <span class="floor-name" id="currentFloorLabel">Piso actual</span>
+          <span id="floorInfoText">Arrastra los POS para posicionarlos.</span>
+        </div>
+
+        <div class="map-area">
+          <div class="summary-panel" id="summaryPanel" title="Ver detalle por piso" role="button" tabindex="0">
+            <div class="summary-section">
+              <div class="summary-title">POS</div>
+              <div class="summary-row"><span>CPOS</span><strong id="sum-pos-cpos">0</strong></div>
+              <div class="summary-row"><span>SCO</span><strong id="sum-pos-sco">0</strong></div>
+              <div class="summary-row"><span>POSm</span><strong id="sum-pos-posm">0</strong></div>
+              <div class="summary-row"><span>POSout</span><strong id="sum-pos-posout">0</strong></div>
+              <div class="summary-row"><span>Perfil Cajero</span><strong id="sum-pos-perfil-cajero">0</strong></div>
+              <div class="summary-row"><span>Perfil Vendedor</span><strong id="sum-pos-perfil-vendedor">0</strong></div>
+              <div class="summary-row"><span>Perfil Red</span><strong id="sum-pos-perfil-red">0</strong></div>
+              <div class="summary-row"><span>Factura</span><strong id="sum-pos-factura">0</strong></div>
+            </div>
+
+            <div class="summary-section">
+              <div class="summary-title">Elementos</div>
+              <div class="summary-row"><span>CP</span><strong id="sum-el-cp">0</strong></div>
+              <div class="summary-row"><span>Kiosco</span><strong id="sum-el-kiosco">0</strong></div>
+              <div class="summary-row"><span>CAV</span><strong id="sum-el-cav">0</strong></div>
+              <div class="summary-row"><span>MEF</span><strong id="sum-el-mef">0</strong></div>
+              <div class="summary-row"><span>Punto de red</span><strong id="sum-el-pr">0</strong></div>
+            </div>
+          </div>
+
+          <div class="map-inner placeholder" id="mapInner">
+            <span>Sube el plano del piso para comenzar.</span>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="floor-tabs">
+      <div class="floor-tab-list" id="floorTabs"></div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn-small" id="btnAddFloor">＋ Nuevo piso</button>
+        <button class="btn-small" id="btnEditFloor">Editar piso</button>
+        <button class="btn-small" id="btnDeleteFloor">Eliminar piso</button>
+      </div>
+    </footer>
+
+    <!-- Panel filtro POS -->
+    <div class="filter-panel" id="filterPanel">
+      <h3>Filtrar POS</h3>
+      <div class="filter-group">
+        <label for="filterBrand">Marca</label>
+        <select id="filterBrand">
+          <option value="ALL">Todas</option>
+          <option value="NCR">NCR</option>
+          <option value="IBM">IBM</option>
+          <option value="PAX">PAX</option>
+          <option value="Toshiba">Toshiba</option>
+          <option value="Apple">Apple</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="filterTipo">Tipo de caja</label>
+        <select id="filterTipo">
+          <option value="ALL">Todos</option>
+          <option value="CPOS">CPOS</option>
+          <option value="SCO">SCO</option>
+          <option value="POSm">POSm</option>
+          <option value="POSout">POSout</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="filterPerfil">Perfil</label>
+        <select id="filterPerfil">
+          <option value="ALL">Todos</option>
+          <option value="Cajero">Cajero</option>
+          <option value="Vendedor">Vendedor</option>
+          <option value="Red">Red</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="filterEstado">Estado</label>
+        <select id="filterEstado">
+          <option value="ALL">Todos</option>
+          <option value="HABILITADO">Habilitado</option>
+          <option value="DESHABILITADO">Deshabilitado</option>
+          <option value="ESTACIONAL">Estacional</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="filterFactura">Factura</label>
+        <select id="filterFactura">
+          <option value="ALL">Todos</option>
+          <option value="YES">Con Factura</option>
+          <option value="NO">Sin Factura</option>
+        </select>
+      </div>
+
+      <div class="filter-panel-footer">
+        <button class="btn-small" id="btnClearFilter">Limpiar</button>
+        <button class="btn-primary" id="btnApplyFilter">Aplicar</button>
+      </div>
+    </div>
+
+    <!-- Panel filtro elementos -->
+    <div class="filter-panel" id="elementFilterPanel">
+      <h3>Filtrar elementos</h3>
+      <div class="filter-group">
+        <label for="elementFilterType">Tipo de elemento</label>
+        <select id="elementFilterType">
+          <option value="ALL">Todos</option>
+          <option value="CP">Consulta precio</option>
+          <option value="KIOSCO">Kiosco</option>
+          <option value="CAV">CAV</option>
+          <option value="MEF">Módulo EEFF</option>
+          <option value="PR">Punto de red</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="elementFilterEstado">Estado</label>
+        <select id="elementFilterEstado">
+          <option value="ALL">Todos</option>
+          <option value="ENABLED">Habilitados</option>
+          <option value="DISABLED">Deshabilitados</option>
+        </select>
+      </div>
+      <div class="filter-panel-footer">
+        <button class="btn-small" id="btnClearElementFilter">Limpiar</button>
+        <button class="btn-primary" id="btnApplyElementFilter">Aplicar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal POS -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle">Nuevo POS</h2>
+        <button id="btnCloseModal">✕</button>
+      </div>
+
+      <div>
+        <div class="form-group">
+          <label for="brandSelect">Marca</label>
+          <select id="brandSelect">
+            <option value="NCR">NCR</option>
+            <option value="IBM">IBM</option>
+            <option value="PAX">PAX</option>
+            <option value="Toshiba">Toshiba</option>
+            <option value="Apple">Apple</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="numberInput">Número (hasta 3 dígitos)</label>
+          <input id="numberInput" type="number" min="0" max="999" placeholder="Ej: 38" />
+        </div>
+
+        <div class="form-group">
+          <label for="tipoSelect">Tipo de caja</label>
+          <select id="tipoSelect">
+            <option value="CPOS">CPOS</option>
+            <option value="SCO">SCO</option>
+            <option value="POSm">POSm</option>
+            <option value="POSout">POSout</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="perfilSelect">Perfil</label>
+          <select id="perfilSelect">
+            <option value="Cajero">Cajero</option>
+            <option value="Vendedor">Vendedor</option>
+            <option value="Red">Red</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="estadoSelect">Estado</label>
+          <select id="estadoSelect">
+            <option value="HABILITADO">Habilitado</option>
+            <option value="DESHABILITADO">Deshabilitado</option>
+            <option value="ESTACIONAL">Estacional</option>
+          </select>
+        </div>
+
+        <div class="form-inline">
+          <input type="checkbox" id="facturaCheck" />
+          <label for="facturaCheck">Factura</label>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-ghost" id="btnCancelPos">Cancelar</button>
+        <button class="btn-primary" id="btnCreatePos">Crear POS</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Elemento -->
+  <div class="modal-backdrop" id="elementModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="elementModalTitle">Nuevo elemento</h2>
+        <button id="btnCloseElementModal">✕</button>
+      </div>
+      <div>
+        <div class="form-group">
+          <label for="elementTypeSelect">Tipo de elemento</label>
+          <select id="elementTypeSelect">
+            <option value="CP">Consulta precio</option>
+            <option value="KIOSCO">Kiosco</option>
+            <option value="CAV">CAV</option>
+            <option value="MEF">Módulo EEFF</option>
+            <option value="PR">Punto de red</option>
+          </select>
+        </div>
+        <div class="form-inline">
+          <input type="checkbox" id="elementEnabledCheck" checked />
+          <label for="elementEnabledCheck">Habilitado</label>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-ghost" id="btnCancelElement">Cancelar</button>
+        <button class="btn-primary" id="btnCreateElement">Crear elemento</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detalle general por piso -->
+  <div class="detail-table-backdrop" id="detailTableBackdrop" aria-hidden="true">
+    <div class="detail-table-modal" role="dialog" aria-modal="true" aria-labelledby="detailTableTitle">
+      <div class="detail-table-header">
+        <div class="detail-table-heading">
+          <h2 id="detailTableTitle">Detalle general por piso</h2>
+          <span>Distribución dinámica de POS y elementos en todos los pisos.</span>
+        </div>
+        <button class="detail-table-close" id="btnCloseDetailTable" type="button" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="detail-table-scroll" id="detailTableContent"></div>
+    </div>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "pos_floorplan_state_v2";
+
+    // Config íconos POS
+    const POS_ICON_CFG_KEY = "pos_icon_config_v1";
+    const DEFAULT_POS_ICON_CFG = {
+      midField: "perfil",
+      iconSize: "md",
+      fontSize: "md"
+    };
+
+    function loadPosIconConfig() {
+      try {
+        const raw = localStorage.getItem(POS_ICON_CFG_KEY);
+        const cfg = raw ? JSON.parse(raw) : { ...DEFAULT_POS_ICON_CFG };
+        if (!cfg || typeof cfg !== "object") return { ...DEFAULT_POS_ICON_CFG };
+        if (!["brand","number","tipo","perfil","factura"].includes(cfg.midField)) cfg.midField = DEFAULT_POS_ICON_CFG.midField;
+        if (!["sm","md","lg"].includes(cfg.iconSize)) cfg.iconSize = DEFAULT_POS_ICON_CFG.iconSize;
+        if (!["sm","md","lg"].includes(cfg.fontSize)) cfg.fontSize = DEFAULT_POS_ICON_CFG.fontSize;
+        return cfg;
+      } catch {
+        return { ...DEFAULT_POS_ICON_CFG };
+      }
+    }
+
+    function savePosIconConfig(cfg) {
+      localStorage.setItem(POS_ICON_CFG_KEY, JSON.stringify(cfg));
+    }
+
+    let posIconCfg = loadPosIconConfig();
+
+    // ✅ Normalizador de estado POS (compatibilidad con versiones anteriores)
+    function normalizePosEstado(pos) {
+      const raw = (pos.estado || "").toString().trim().toUpperCase();
+
+      // ya en formato nuevo
+      if (raw === "HABILITADO" || raw === "DESHABILITADO" || raw === "ESTACIONAL") return raw;
+
+      // formato antiguo: PERMANENTE/ESTACIONAL
+      if (raw === "PERMANENTE") return "HABILITADO";
+      if (raw === "ESTACIONAL") return "ESTACIONAL";
+
+      // campo antiguo: habilitado boolean
+      if (typeof pos.habilitado === "boolean") return pos.habilitado ? "HABILITADO" : "DESHABILITADO";
+
+      // fallback
+      return "HABILITADO";
+    }
+
+    function defaultState() {
+      return {
+        activeFloorId: "floor-1",
+        floors: [
+          { id: "floor-1", name: "Piso 1", background: null, posList: [], elementList: [] },
+          { id: "floor-2", name: "Piso 2", background: null, posList: [], elementList: [] }
+        ]
+      };
+    }
+
+    let state;
+    let editingPosId = null;
+    let editingElementId = null;
+
+    let filters = { brand: "ALL", tipo: "ALL", perfil: "ALL", estado: "ALL", factura: "ALL" };
+    let elementFilters = { type: "ALL", estado: "ALL" };
+
+    let currentTooltip = null;
+    let tooltipPinned = false;
+    let tooltipPinnedIcon = null;
+    let activeDrag = null;
+
+    let highlightTimeout = null;
+
+    function loadState() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        state = stored ? JSON.parse(stored) : defaultState();
+        if (!state.floors) state = defaultState();
+
+        state.floors.forEach(f => {
+          if (!f.posList) f.posList = [];
+          if (!f.elementList) f.elementList = [];
+
+          f.posList.forEach(p => {
+            if (!p.perfil) p.perfil = "Cajero";
+            p.estado = normalizePosEstado(p);
+          });
+
+          f.elementList.forEach(el => {
+            if (typeof el.enabled !== "boolean") {
+              if (typeof el.habilitado === "boolean") el.enabled = !!el.habilitado;
+              else el.enabled = true;
+            }
+          });
+        });
+      } catch (e) {
+        console.error("Error cargando estado, usando estado por defecto", e);
+        state = defaultState();
+      }
+      saveState();
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        updateStats();
+      } catch (e) {
+        console.error("Error guardando estado", e);
+      }
+    }
+
+    function uuid() {
+      return "id-" + Math.random().toString(36).slice(2, 10);
+    }
+
+    function getActiveFloor() {
+      return state.floors.find(f => f.id === state.activeFloorId);
+    }
+
+    function posPassesFilters(pos) {
+      if (filters.brand !== "ALL" && pos.brand !== filters.brand) return false;
+      if (filters.tipo !== "ALL" && pos.tipo !== filters.tipo) return false;
+      if (filters.perfil !== "ALL" && pos.perfil !== filters.perfil) return false;
+
+      const estado = normalizePosEstado(pos);
+      if (filters.estado !== "ALL" && estado !== filters.estado) return false;
+
+      if (filters.factura === "YES" && !pos.factura) return false;
+      if (filters.factura === "NO" && pos.factura) return false;
+      return true;
+    }
+
+    function elementPassesFilters(el) {
+      const typeKey = (el.type || "").toString().toUpperCase();
+      if (elementFilters.type !== "ALL") {
+        if (elementFilters.type === "CP" && typeKey !== "CP") return false;
+        if (elementFilters.type === "KIOSCO" && typeKey !== "KIOSCO") return false;
+        if (elementFilters.type === "CAV" && typeKey !== "CAV") return false;
+        if (elementFilters.type === "MEF" && typeKey !== "MEF") return false;
+        if (elementFilters.type === "PR" && typeKey !== "PR") return false;
+      }
+      if (elementFilters.estado === "ENABLED" && !el.enabled) return false;
+      if (elementFilters.estado === "DISABLED" && el.enabled) return false;
+      return true;
+    }
+
+    // DOM refs
+    const mapInnerEl = document.getElementById("mapInner");
+    const floorInfoTextEl = document.getElementById("floorInfoText");
+    const currentFloorLabelEl = document.getElementById("currentFloorLabel");
+    const floorTabsEl = document.getElementById("floorTabs");
+    const bgUploaderEl = document.getElementById("bgUploader");
+    const btnUploadBgEl = document.getElementById("btnUploadBg");
+    const btnAddFloorEl = document.getElementById("btnAddFloor");
+    const btnDeleteFloorEl = document.getElementById("btnDeleteFloor");
+    const btnEditFloorEl = document.getElementById("btnEditFloor");
+    const btnExportStateEl = document.getElementById("btnExportState");
+    const btnImportStateEl = document.getElementById("btnImportState");
+    const importFileEl = document.getElementById("importFile");
+
+    const statHabilitadoEl = document.querySelector("#stat-habilitado strong");
+    const statDeshabilitadoEl = document.querySelector("#stat-deshabilitado strong");
+    const statEstacionalEl = document.querySelector("#stat-estacional strong");
+
+    const sumPosCposEl = document.getElementById("sum-pos-cpos");
+    const sumPosScoEl = document.getElementById("sum-pos-sco");
+    const sumPosPosmEl = document.getElementById("sum-pos-posm");
+    const sumPosPosoutEl = document.getElementById("sum-pos-posout");
+    const sumPosFacturaEl = document.getElementById("sum-pos-factura");
+    const sumPosPerfilCajeroEl = document.getElementById("sum-pos-perfil-cajero");
+    const sumPosPerfilVendedorEl = document.getElementById("sum-pos-perfil-vendedor");
+    const sumPosPerfilRedEl = document.getElementById("sum-pos-perfil-red");
+    const sumElCpEl = document.getElementById("sum-el-cp");
+    const sumElKioscoEl = document.getElementById("sum-el-kiosco");
+    const sumElCavEl = document.getElementById("sum-el-cav");
+    const sumElMefEl = document.getElementById("sum-el-mef");
+    const sumElPrEl = document.getElementById("sum-el-pr");
+
+    const summaryPanelEl = document.getElementById("summaryPanel");
+    const detailTableBackdropEl = document.getElementById("detailTableBackdrop");
+    const detailTableContentEl = document.getElementById("detailTableContent");
+    const btnCloseDetailTableEl = document.getElementById("btnCloseDetailTable");
+
+    const modalBackdrop = document.getElementById("modalBackdrop");
+    const btnOpenModal = document.getElementById("btnOpenModal");
+    const btnCloseModal = document.getElementById("btnCloseModal");
+    const btnCancelPos = document.getElementById("btnCancelPos");
+    const btnCreatePos = document.getElementById("btnCreatePos");
+    const modalTitleEl = document.getElementById("modalTitle");
+    const brandSelectEl = document.getElementById("brandSelect");
+    const numberInputEl = document.getElementById("numberInput");
+    const tipoSelectEl = document.getElementById("tipoSelect");
+    const perfilSelectEl = document.getElementById("perfilSelect");
+    const estadoSelectEl = document.getElementById("estadoSelect");
+    const facturaCheckEl = document.getElementById("facturaCheck");
+
+    const elementModalBackdrop = document.getElementById("elementModalBackdrop");
+    const btnOpenElementModal = document.getElementById("btnOpenElementModal");
+    const btnCloseElementModal = document.getElementById("btnCloseElementModal");
+    const btnCancelElement = document.getElementById("btnCancelElement");
+    const btnCreateElement = document.getElementById("btnCreateElement");
+    const elementModalTitleEl = document.getElementById("elementModalTitle");
+    const elementTypeSelectEl = document.getElementById("elementTypeSelect");
+    const elementEnabledCheckEl = document.getElementById("elementEnabledCheck");
+
+    const filterPanelEl = document.getElementById("filterPanel");
+    const filterBrandEl = document.getElementById("filterBrand");
+    const filterTipoEl = document.getElementById("filterTipo");
+    const filterPerfilEl = document.getElementById("filterPerfil");
+    const filterEstadoEl = document.getElementById("filterEstado");
+    const filterFacturaEl = document.getElementById("filterFactura");
+    const btnFilterEl = document.getElementById("btnFilter");
+    const btnApplyFilterEl = document.getElementById("btnApplyFilter");
+    const btnClearFilterEl = document.getElementById("btnClearFilter");
+
+    const elementFilterPanelEl = document.getElementById("elementFilterPanel");
+    const elementFilterTypeEl = document.getElementById("elementFilterType");
+    const elementFilterEstadoEl = document.getElementById("elementFilterEstado");
+    const btnElementFilterEl = document.getElementById("btnElementFilter");
+    const btnApplyElementFilterEl = document.getElementById("btnApplyElementFilter");
+    const btnClearElementFilterEl = document.getElementById("btnClearElementFilter");
+
+    const btnPosSearchEl = document.getElementById("btnPosSearch");
+    const searchPanelEl = document.getElementById("searchPanel");
+    const posSearchInputEl = document.getElementById("posSearchInput");
+    const btnPosSearchGoEl = document.getElementById("btnPosSearchGo");
+
+    const btnPosConfigEl = document.getElementById("btnPosConfig");
+    const configPanelEl = document.getElementById("configPanel");
+    const cfgPosMidFieldEl = document.getElementById("cfgPosMidField");
+    const cfgPosIconSizeEl = document.getElementById("cfgPosIconSize");
+    const cfgPosFontSizeEl = document.getElementById("cfgPosFontSize");
+    const btnCfgResetEl = document.getElementById("btnCfgReset");
+    const btnCfgApplyEl = document.getElementById("btnCfgApply");
+
+    function syncConfigUIFromState() {
+      cfgPosMidFieldEl.value = posIconCfg.midField;
+      cfgPosIconSizeEl.value = posIconCfg.iconSize;
+      cfgPosFontSizeEl.value = posIconCfg.fontSize;
+    }
+
+    function renderFloorTabs() {
+      floorTabsEl.innerHTML = "";
+      state.floors.forEach(floor => {
+        const tab = document.createElement("button");
+        tab.className = "floor-tab" + (floor.id === state.activeFloorId ? " active" : "");
+        tab.dataset.floorId = floor.id;
+        tab.textContent = floor.name;
+
+        tab.addEventListener("click", () => {
+          state.activeFloorId = floor.id;
+          saveState();
+          renderFloorTabs();
+          renderMap();
+        });
+
+        floorTabsEl.appendChild(tab);
+      });
+    }
+
+    function renderMap() {
+      const floor = getActiveFloor();
+      if (!floor) return;
+
+      currentFloorLabelEl.textContent = floor.name;
+
+      const total = floor.posList.length;
+      const visibleList = floor.posList.filter(posPassesFilters);
+      const visible = visibleList.length;
+
+      if (total === 0) floorInfoTextEl.textContent = "Sin POS en este piso.";
+      else if (visible === total) floorInfoTextEl.textContent = `POS en este piso: ${total}`;
+      else floorInfoTextEl.textContent = `Mostrando ${visible} de ${total} POS (filtrados)`;
+
+      mapInnerEl.innerHTML = "";
+      mapInnerEl.classList.remove("placeholder");
+
+      if (!floor.background) {
+        mapInnerEl.classList.add("placeholder");
+        mapInnerEl.innerHTML = "<span>Sube el plano del piso para comenzar.</span>";
+      } else {
+        const img = document.createElement("img");
+        img.src = floor.background;
+        mapInnerEl.appendChild(img);
+      }
+
+      visibleList.forEach(pos => renderPosIcon(pos));
+
+      const elementList = floor.elementList || [];
+      elementList.filter(elementPassesFilters).forEach(el => renderElementIcon(el));
+
+      updateStats();
+    }
+
+    function getPosMidValue(pos) {
+      switch (posIconCfg.midField) {
+        case "brand": return pos.brand || "";
+        case "number": return String(pos.number ?? "");
+        case "tipo": return pos.tipo || "";
+        case "perfil": return pos.perfil || "Cajero";
+        case "factura": return pos.factura ? "F" : "";
+        default: return pos.perfil || "Cajero";
+      }
+    }
+
+    function estadoToClass(estado) {
+      if (estado === "DESHABILITADO") return "deshabilitado";
+      if (estado === "ESTACIONAL") return "estacional";
+      return "habilitado";
+    }
+
+    function estadoToLabel(estado) {
+      if (estado === "DESHABILITADO") return "Deshabilitado";
+      if (estado === "ESTACIONAL") return "Estacional";
+      return "Habilitado";
+    }
+
+    function renderPosIcon(pos) {
+      const el = document.createElement("div");
+
+      const estado = normalizePosEstado(pos);
+      const estadoClass = estadoToClass(estado);
+
+      const sizeClass = posIconCfg.iconSize === "sm" ? "size-sm" : posIconCfg.iconSize === "lg" ? "size-lg" : "size-md";
+      const fontClass = posIconCfg.fontSize === "sm" ? "font-sm" : posIconCfg.fontSize === "lg" ? "font-lg" : "font-md";
+
+      el.className = `pos-icon ${estadoClass} ${sizeClass} ${fontClass}`;
+      el.dataset.posId = pos.id;
+
+      el.style.left = (pos.xPct || 0.5) * 100 + "%";
+      el.style.top = (pos.yPct || 0.5) * 100 + "%";
+
+      const mid = getPosMidValue(pos);
+
+      el.innerHTML = `
+        <div class="pos-brand">${pos.brand || ""}</div>
+        <div class="pos-mid">${mid}</div>
+        <div class="pos-footer">
+          <span>${pos.tipo || ""}</span>
+          <span class="pos-status-dot ${estadoClass}"></span>
+        </div>
+      `;
+
+      makeDraggable(el, pos, () => {
+        tooltipPinned = true;
+        tooltipPinnedIcon = el;
+        showTooltip(el, pos);
+      });
+
+      mapInnerEl.appendChild(el);
+    }
+
+    function renderElementIcon(element) {
+      const el = document.createElement("div");
+      const typeKey = (element.type || "").toString().toUpperCase();
+      const typeClass =
+        typeKey === "CP" ? "type-cp" :
+        typeKey === "KIOSCO" ? "type-kiosco" :
+        typeKey === "CAV" ? "type-cav" :
+        typeKey === "MEF" ? "type-mef" :
+        typeKey === "PR" ? "type-pr" : "";
+
+      el.className = "element-icon " + (element.enabled ? "enabled " : "disabled ") + typeClass;
+      el.dataset.elementId = element.id;
+
+      el.style.left = (element.xPct || 0.5) * 100 + "%";
+      el.style.top = (element.yPct || 0.5) * 100 + "%";
+
+      let label = "";
+      if (typeKey === "CP") label = "CP";
+      else if (typeKey === "KIOSCO") label = "K";
+      else if (typeKey === "CAV") label = "CAV";
+      else if (typeKey === "MEF") label = "MEF";
+      else if (typeKey === "PR") label = "PR";
+      el.textContent = label;
+
+      makeDraggable(el, element, () => {
+        tooltipPinned = true;
+        tooltipPinnedIcon = el;
+        showElementTooltip(el, element);
+      });
+
+      mapInnerEl.appendChild(el);
+    }
+
+    function makeDraggable(el, obj, onQuickClick) {
+      const MAX_CLICK_MS = 1000;
+      const MOVE_TOLERANCE_PX = 5;
+
+      function onPointerDown(e) {
+        if (e.target.closest(".pos-tooltip") || e.target.tagName === "BUTTON") return;
+
+        const rect = mapInnerEl.getBoundingClientRect();
+        const elRect = el.getBoundingClientRect();
+        const offsetX = e.clientX - elRect.left;
+        const offsetY = e.clientY - elRect.top;
+
+        activeDrag = {
+          rect, obj, offsetX, offsetY, el,
+          pointerId: e.pointerId,
+          startX: e.clientX,
+          startY: e.clientY,
+          startedAt: performance.now(),
+          moved: false
+        };
+
+        el.classList.add("dragging");
+        window.addEventListener("pointermove", onPointerMove);
+        window.addEventListener("pointerup", onPointerUp);
+        window.addEventListener("pointercancel", onPointerCancel);
+      }
+
+      function onPointerMove(e) {
+        if (!activeDrag || activeDrag.el !== el) return;
+        const drag = activeDrag;
+        const { rect, obj, offsetX, offsetY } = drag;
+
+        if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) > MOVE_TOLERANCE_PX) {
+          drag.moved = true;
+        }
+
+        let x = e.clientX - rect.left - offsetX + el.offsetWidth / 2;
+        let y = e.clientY - rect.top - offsetY + el.offsetHeight / 2;
+
+        x = Math.max(0, Math.min(x, rect.width));
+        y = Math.max(0, Math.min(y, rect.height));
+
+        const xPct = x / rect.width;
+        const yPct = y / rect.height;
+
+        obj.xPct = xPct;
+        obj.yPct = yPct;
+
+        el.style.left = xPct * 100 + "%";
+        el.style.top = yPct * 100 + "%";
+      }
+
+      function finishPointerInteraction(cancelled = false) {
+        if (!activeDrag || activeDrag.el !== el) return;
+        const drag = activeDrag;
+        const duration = performance.now() - drag.startedAt;
+        activeDrag = null;
+        el.classList.remove("dragging");
+
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", onPointerUp);
+        window.removeEventListener("pointercancel", onPointerCancel);
+
+        if (drag.moved) saveState();
+
+        // Solo un clic corto y sin desplazamiento abre el menú contextual.
+        // Mantener pulsado por más de 1 segundo o arrastrar nunca lo abre.
+        if (!cancelled && !drag.moved && duration <= MAX_CLICK_MS && typeof onQuickClick === "function") {
+          onQuickClick();
+        }
+      }
+
+      function onPointerUp(e) {
+        if (!activeDrag || activeDrag.el !== el) return;
+        e.stopPropagation();
+        finishPointerInteraction(false);
+      }
+
+      function onPointerCancel() {
+        finishPointerInteraction(true);
+      }
+
+      el.addEventListener("pointerdown", onPointerDown);
+      // Evita que el evento click sintético posterior al pointerup reabra tooltips.
+      el.addEventListener("click", e => e.stopPropagation());
+    }
+
+    // ===== Mover POS / elementos entre pisos =====
+    function closeCurrentTooltip() {
+      if (currentTooltip && currentTooltip.parentElement) {
+        currentTooltip.parentElement.removeChild(currentTooltip);
+      }
+      currentTooltip = null;
+      tooltipPinned = false;
+      tooltipPinnedIcon = null;
+    }
+
+    function chooseTargetFloor(currentFloorId, itemLabel) {
+      const availableFloors = state.floors.filter(f => f.id !== currentFloorId);
+
+      if (availableFloors.length === 0) {
+        alert("No hay otro piso disponible para mover este elemento.");
+        return null;
+      }
+
+      let message = `Mover ${itemLabel} a:\n`;
+      availableFloors.forEach((floor, index) => {
+        message += `${index + 1}. ${floor.name}\n`;
+      });
+
+      const input = prompt(message);
+      if (input === null || input.trim() === "") return null;
+
+      const selectedIndex = parseInt(input, 10) - 1;
+      if (isNaN(selectedIndex) || selectedIndex < 0 || selectedIndex >= availableFloors.length) {
+        alert("Selección no válida.");
+        return null;
+      }
+
+      return availableFloors[selectedIndex];
+    }
+
+    function movePosToFloor(pos) {
+      const sourceFloor = getActiveFloor();
+      if (!sourceFloor) return;
+
+      const targetFloor = chooseTargetFloor(sourceFloor.id, `POS ${pos.brand} ${pos.number}`);
+      if (!targetFloor) return;
+
+      const index = sourceFloor.posList.findIndex(p => p.id === pos.id);
+      if (index === -1) return;
+
+      const [movedPos] = sourceFloor.posList.splice(index, 1);
+      if (!targetFloor.posList) targetFloor.posList = [];
+      targetFloor.posList.push(movedPos);
+
+      closeCurrentTooltip();
+      state.activeFloorId = targetFloor.id;
+      saveState();
+      renderFloorTabs();
+      renderMap();
+
+      // Resalta brevemente el POS en el piso de destino para ubicarlo rápido.
+      setTimeout(() => highlightPosById(movedPos.id), 50);
+    }
+
+    function moveElementToFloor(element, tipoLabel) {
+      const sourceFloor = getActiveFloor();
+      if (!sourceFloor) return;
+
+      const targetFloor = chooseTargetFloor(sourceFloor.id, `elemento ${tipoLabel}`);
+      if (!targetFloor) return;
+
+      const index = sourceFloor.elementList.findIndex(x => x.id === element.id);
+      if (index === -1) return;
+
+      const [movedElement] = sourceFloor.elementList.splice(index, 1);
+      if (!targetFloor.elementList) targetFloor.elementList = [];
+      targetFloor.elementList.push(movedElement);
+
+      closeCurrentTooltip();
+      state.activeFloorId = targetFloor.id;
+      saveState();
+      renderFloorTabs();
+      renderMap();
+    }
+
+    function showTooltip(el, pos) {
+      if (currentTooltip && currentTooltip.parentElement) currentTooltip.parentElement.removeChild(currentTooltip);
+
+      const estado = normalizePosEstado(pos);
+
+      const tooltip = document.createElement("div");
+      tooltip.className = "pos-tooltip";
+      tooltip.innerHTML = `
+        <h4>Detalle POS</h4>
+        <div class="pos-tooltip-row"><span class="label">Marca</span><span>${pos.brand}</span></div>
+        <div class="pos-tooltip-row"><span class="label">Número</span><span>${pos.number}</span></div>
+        <div class="pos-tooltip-row"><span class="label">Tipo</span><span>${pos.tipo}</span></div>
+        <div class="pos-tooltip-row"><span class="label">Perfil</span><span>${pos.perfil}</span></div>
+        <div class="pos-tooltip-row"><span class="label">Estado</span><span>${estadoToLabel(estado)}</span></div>
+        <div class="pos-tooltip-row"><span class="label">Factura</span><span>${pos.factura ? "Sí" : "No"}</span></div>
+        <div class="pos-tooltip-actions">
+          <button class="btn-mini" data-action="edit">Editar</button>
+          <button class="btn-mini" data-action="move">Mover</button>
+          <button class="btn-mini danger" data-action="delete">Eliminar</button>
+        </div>
+      `;
+
+      tooltip.addEventListener("click", e => e.stopPropagation());
+      mapInnerEl.appendChild(tooltip);
+      currentTooltip = tooltip;
+
+      const mapRect = mapInnerEl.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const centerX = elRect.left + elRect.width / 2;
+      const centerY = elRect.top + elRect.height / 2;
+
+      tooltip.style.left = (centerX - mapRect.left) + "px";
+      tooltip.style.top = (centerY - mapRect.top) + "px";
+
+      const tipRect = tooltip.getBoundingClientRect();
+      if (tipRect.top < mapRect.top + 8) tooltip.style.transform = "translate(-50%, 8px)";
+      else tooltip.style.transform = "translate(-50%, -100%)";
+
+      const btnEdit = tooltip.querySelector('[data-action="edit"]');
+      const btnMove = tooltip.querySelector('[data-action="move"]');
+      const btnDelete = tooltip.querySelector('[data-action="delete"]');
+
+      [btnEdit, btnMove, btnDelete].forEach(btn => {
+        if (!btn) return;
+        btn.addEventListener("pointerdown", ev => ev.stopPropagation());
+        btn.addEventListener("click", ev => ev.stopPropagation());
+      });
+
+      btnEdit.addEventListener("click", e => {
+        e.stopPropagation();
+        if (currentTooltip && currentTooltip.parentElement) currentTooltip.parentElement.removeChild(currentTooltip);
+        currentTooltip = null;
+        tooltipPinned = false;
+        tooltipPinnedIcon = null;
+        openModal(pos);
+      });
+
+      btnMove.addEventListener("click", e => {
+        e.stopPropagation();
+        movePosToFloor(pos);
+      });
+
+      btnDelete.addEventListener("click", e => {
+        e.stopPropagation();
+        const floor = getActiveFloor();
+        if (!floor) return;
+        if (!confirm(`¿Eliminar POS ${pos.brand} ${pos.number}?`)) return;
+        const index = floor.posList.findIndex(p => p.id === pos.id);
+        if (index !== -1) {
+          floor.posList.splice(index, 1);
+          saveState();
+          renderMap();
+        }
+      });
+    }
+
+    function showElementTooltip(el, element) {
+      if (currentTooltip && currentTooltip.parentElement) currentTooltip.parentElement.removeChild(currentTooltip);
+
+      const tooltip = document.createElement("div");
+      tooltip.className = "pos-tooltip";
+
+      const typeKey = (element.type || "").toString().toUpperCase();
+      const tipoLabel =
+        typeKey === "CP" ? "Consulta precio" :
+        typeKey === "KIOSCO" ? "Kiosco" :
+        typeKey === "CAV" ? "CAV" :
+        typeKey === "MEF" ? "Módulo EEFF" :
+        typeKey === "PR" ? "Punto de red" : typeKey;
+
+      tooltip.innerHTML = `
+        <h4>Detalle elemento</h4>
+        <div class="pos-tooltip-row"><span class="label">Tipo</span><span>${tipoLabel}</span></div>
+        <div class="pos-tooltip-row"><span class="label">Estado</span><span>${element.enabled ? "Habilitado" : "Deshabilitado"}</span></div>
+        <div class="pos-tooltip-actions">
+          <button class="btn-mini" data-action="edit">Editar</button>
+          <button class="btn-mini" data-action="move">Mover</button>
+          <button class="btn-mini danger" data-action="delete">Eliminar</button>
+        </div>
+      `;
+
+      tooltip.addEventListener("click", e => e.stopPropagation());
+      mapInnerEl.appendChild(tooltip);
+      currentTooltip = tooltip;
+
+      const mapRect = mapInnerEl.getBoundingClientRect();
+      const elRect = el.getBoundingClientRect();
+      const centerX = elRect.left + elRect.width / 2;
+      const centerY = elRect.top + elRect.height / 2;
+
+      tooltip.style.left = (centerX - mapRect.left) + "px";
+      tooltip.style.top = (centerY - mapRect.top) + "px";
+
+      const tipRect = tooltip.getBoundingClientRect();
+      if (tipRect.top < mapRect.top + 8) tooltip.style.transform = "translate(-50%, 8px)";
+      else tooltip.style.transform = "translate(-50%, -100%)";
+
+      const btnEdit = tooltip.querySelector('[data-action="edit"]');
+      const btnMove = tooltip.querySelector('[data-action="move"]');
+      const btnDelete = tooltip.querySelector('[data-action="delete"]');
+
+      [btnEdit, btnMove, btnDelete].forEach(btn => {
+        if (!btn) return;
+        btn.addEventListener("pointerdown", ev => ev.stopPropagation());
+        btn.addEventListener("click", ev => ev.stopPropagation());
+      });
+
+      btnEdit.addEventListener("click", e => {
+        e.stopPropagation();
+        if (currentTooltip && currentTooltip.parentElement) currentTooltip.parentElement.removeChild(currentTooltip);
+        currentTooltip = null;
+        tooltipPinned = false;
+        tooltipPinnedIcon = null;
+        openElementModal(element);
+      });
+
+      btnMove.addEventListener("click", e => {
+        e.stopPropagation();
+        moveElementToFloor(element, tipoLabel);
+      });
+
+      btnDelete.addEventListener("click", e => {
+        e.stopPropagation();
+        const floor = getActiveFloor();
+        if (!floor) return;
+        if (!confirm(`¿Eliminar elemento ${tipoLabel}?`)) return;
+        const index = floor.elementList.findIndex(x => x.id === element.id);
+        if (index !== -1) {
+          floor.elementList.splice(index, 1);
+          saveState();
+          renderMap();
+        }
+      });
+    }
+
+    btnUploadBgEl.addEventListener("click", () => bgUploaderEl.click());
+
+    bgUploaderEl.addEventListener("change", e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const floor = getActiveFloor();
+        if (!floor) return;
+        floor.background = ev.target.result;
+        saveState();
+        renderMap();
+      };
+      reader.readAsDataURL(file);
+      e.target.value = "";
+    });
+
+    function openModal(pos) {
+      if (pos) {
+        editingPosId = pos.id;
+        modalTitleEl.textContent = "Editar POS";
+        brandSelectEl.value = pos.brand;
+        numberInputEl.value = pos.number;
+        tipoSelectEl.value = pos.tipo;
+        perfilSelectEl.value = pos.perfil;
+        estadoSelectEl.value = normalizePosEstado(pos);
+        facturaCheckEl.checked = !!pos.factura;
+        btnCreatePos.textContent = "Guardar cambios";
+      } else {
+        editingPosId = null;
+        modalTitleEl.textContent = "Nuevo POS";
+        resetPosForm();
+        btnCreatePos.textContent = "Crear POS";
+      }
+      modalBackdrop.classList.add("show");
+    }
+
+    function closeModal() {
+      modalBackdrop.classList.remove("show");
+      resetPosForm();
+      editingPosId = null;
+      btnCreatePos.textContent = "Crear POS";
+      modalTitleEl.textContent = "Nuevo POS";
+    }
+
+    function resetPosForm() {
+      brandSelectEl.value = "NCR";
+      numberInputEl.value = "";
+      tipoSelectEl.value = "CPOS";
+      perfilSelectEl.value = "Cajero";
+      estadoSelectEl.value = "HABILITADO";
+      facturaCheckEl.checked = false;
+    }
+
+    btnOpenModal.addEventListener("click", () => openModal(null));
+    btnCloseModal.addEventListener("click", closeModal);
+    btnCancelPos.addEventListener("click", closeModal);
+    modalBackdrop.addEventListener("click", e => { if (e.target === modalBackdrop) closeModal(); });
+
+    btnCreatePos.addEventListener("click", e => {
+      e.preventDefault();
+      const brand = brandSelectEl.value;
+      const number = numberInputEl.value.trim();
+      const tipo = tipoSelectEl.value;
+      const perfil = perfilSelectEl.value;
+      const estado = estadoSelectEl.value; // HABILITADO | DESHABILITADO | ESTACIONAL
+      const factura = facturaCheckEl.checked;
+
+      if (!number || isNaN(Number(number)) || Number(number) < 0) {
+        alert("Ingresa un número válido para el POS (0 a 999).");
+        return;
+      }
+
+      const floor = getActiveFloor();
+      if (!floor) return;
+
+      if (editingPosId) {
+        const pos = floor.posList.find(p => p.id === editingPosId);
+        if (!pos) return;
+        pos.brand = brand;
+        pos.number = String(Math.min(Number(number), 999));
+        pos.tipo = tipo;
+        pos.perfil = perfil;
+        pos.estado = estado;
+        pos.factura = factura;
+      } else {
+        const pos = {
+          id: uuid(),
+          brand,
+          number: String(Math.min(Number(number), 999)),
+          tipo,
+          perfil,
+          estado,
+          factura,
+          xPct: 0.5,
+          yPct: 0.5
+        };
+        floor.posList.push(pos);
+      }
+
+      saveState();
+      renderMap();
+      closeModal();
+    });
+
+    function openElementModal(element) {
+      if (element) {
+        editingElementId = element.id;
+        elementModalTitleEl.textContent = "Editar elemento";
+        elementTypeSelectEl.value = (element.type || "CP").toString().toUpperCase();
+        elementEnabledCheckEl.checked = !!element.enabled;
+        btnCreateElement.textContent = "Guardar cambios";
+      } else {
+        editingElementId = null;
+        elementModalTitleEl.textContent = "Nuevo elemento";
+        elementTypeSelectEl.value = "CP";
+        elementEnabledCheckEl.checked = true;
+        btnCreateElement.textContent = "Crear elemento";
+      }
+      elementModalBackdrop.classList.add("show");
+    }
+
+    function closeElementModal() {
+      elementModalBackdrop.classList.remove("show");
+      editingElementId = null;
+      elementTypeSelectEl.value = "CP";
+      elementEnabledCheckEl.checked = true;
+      btnCreateElement.textContent = "Crear elemento";
+      elementModalTitleEl.textContent = "Nuevo elemento";
+    }
+
+    btnOpenElementModal.addEventListener("click", () => openElementModal(null));
+    btnCloseElementModal.addEventListener("click", closeElementModal);
+    btnCancelElement.addEventListener("click", closeElementModal);
+    elementModalBackdrop.addEventListener("click", e => { if (e.target === elementModalBackdrop) closeElementModal(); });
+
+    btnCreateElement.addEventListener("click", e => {
+      e.preventDefault();
+      const type = elementTypeSelectEl.value;
+      const enabled = elementEnabledCheckEl.checked;
+
+      const floor = getActiveFloor();
+      if (!floor) return;
+
+      if (editingElementId) {
+        const element = floor.elementList.find(el => el.id === editingElementId);
+        if (!element) return;
+        element.type = type;
+        element.enabled = enabled;
+      } else {
+        const element = { id: uuid(), type, enabled, xPct: 0.5, yPct: 0.5 };
+        floor.elementList.push(element);
+      }
+
+      saveState();
+      renderMap();
+      closeElementModal();
+    });
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    function buildDetailRows() {
+      const posMetrics = [
+        { name: "CPOS", test: p => (p.tipo || "").toUpperCase() === "CPOS" },
+        { name: "SCO", test: p => (p.tipo || "").toUpperCase() === "SCO" },
+        { name: "POSm", test: p => (p.tipo || "").toUpperCase() === "POSM" },
+        { name: "POSout", test: p => (p.tipo || "").toUpperCase() === "POSOUT" },
+        { name: "Perfil Cajero", test: p => (p.perfil || "Cajero") === "Cajero" },
+        { name: "Perfil Vendedor", test: p => p.perfil === "Vendedor" },
+        { name: "Perfil Red", test: p => p.perfil === "Red" },
+        { name: "Factura", test: p => !!p.factura }
+      ];
+
+      const elementMetrics = [
+        { name: "Consulta precio", type: "CP" },
+        { name: "Kiosco", type: "KIOSCO" },
+        { name: "CAV", type: "CAV" },
+        { name: "Módulo EEFF", type: "MEF" },
+        { name: "Punto de red", type: "PR" }
+      ];
+
+      const rows = [];
+      const posStates = ["HABILITADO", "DESHABILITADO", "ESTACIONAL"];
+      const elementStates = ["HABILITADO", "DESHABILITADO"];
+
+      posMetrics.forEach(metric => {
+        posStates.forEach(status => {
+          const counts = state.floors.map(floor => (floor.posList || []).filter(p => metric.test(p) && normalizePosEstado(p) === status).length);
+          const total = counts.reduce((a, b) => a + b, 0);
+          if (total > 0) rows.push({ name: metric.name, status, counts, total });
+        });
+      });
+
+      elementMetrics.forEach(metric => {
+        elementStates.forEach(status => {
+          const enabledWanted = status === "HABILITADO";
+          const counts = state.floors.map(floor => (floor.elementList || []).filter(el => {
+            const type = (el.type || el.elementType || el.tipo || "").toUpperCase();
+            const enabled = typeof el.enabled === "boolean" ? el.enabled : true;
+            return type === metric.type && enabled === enabledWanted;
+          }).length);
+          const total = counts.reduce((a, b) => a + b, 0);
+          if (total > 0) rows.push({ name: metric.name, status, counts, total });
+        });
+      });
+
+      return rows;
+    }
+
+    function openDetailTable() {
+      const rows = buildDetailRows();
+      const floorHeaders = state.floors.map(f => `<th>${escapeHtml(f.name)}</th>`).join("");
+
+      let body = "";
+      if (rows.length === 0) {
+        body = `<tr><td colspan="${state.floors.length + 3}"><div class="detail-empty">Todavía no hay POS ni elementos registrados.</div></td></tr>`;
+      } else {
+        body = rows.map(row => {
+          const stateClass = row.status === "HABILITADO" ? "habilitado" : row.status === "DESHABILITADO" ? "deshabilitado" : "estacional";
+          const stateLabel = estadoToLabel(row.status);
+          const cells = row.counts.map(value => `<td>${value}</td>`).join("");
+          return `<tr>
+            <td>${escapeHtml(row.name)}</td>
+            <td><span class="state-pill ${stateClass}">${escapeHtml(stateLabel)}</span></td>
+            ${cells}
+            <td>${row.total}</td>
+          </tr>`;
+        }).join("");
+      }
+
+      detailTableContentEl.innerHTML = `
+        <table class="detail-table">
+          <thead>
+            <tr>
+              <th>Nombre</th>
+              <th>Estado</th>
+              ${floorHeaders}
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody>${body}</tbody>
+        </table>`;
+
+      detailTableBackdropEl.classList.add("show");
+      detailTableBackdropEl.setAttribute("aria-hidden", "false");
+    }
+
+    function closeDetailTable() {
+      detailTableBackdropEl.classList.remove("show");
+      detailTableBackdropEl.setAttribute("aria-hidden", "true");
+    }
+
+    summaryPanelEl.addEventListener("click", e => {
+      e.stopPropagation();
+      openDetailTable();
+    });
+    summaryPanelEl.addEventListener("keydown", e => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openDetailTable();
+      }
+    });
+    btnCloseDetailTableEl.addEventListener("click", closeDetailTable);
+    detailTableBackdropEl.addEventListener("click", e => {
+      if (e.target === detailTableBackdropEl) closeDetailTable();
+    });
+    document.addEventListener("keydown", e => {
+      if (e.key === "Escape" && detailTableBackdropEl.classList.contains("show")) closeDetailTable();
+    });
+
+    function updateStats() {
+      let habilitados = 0, deshabilitados = 0, estacionales = 0;
+
+      let cpos = 0, sco = 0, posm = 0, posout = 0;
+      let cajeros = 0, vendedores = 0, redCount = 0;
+      let facturaCount = 0;
+
+      let cpCount = 0, kioscoCount = 0, cavCount = 0, mefCount = 0, prCount = 0;
+
+      state.floors.forEach(f => {
+        f.posList.forEach(p => {
+          const estado = normalizePosEstado(p);
+          if (estado === "DESHABILITADO") deshabilitados++;
+          else if (estado === "ESTACIONAL") estacionales++;
+          else habilitados++;
+
+          const t = (p.tipo || "").toUpperCase();
+          if (t === "CPOS") cpos++;
+          else if (t === "SCO") sco++;
+          else if (t === "POSM") posm++;
+          else if (t === "POSOUT") posout++;
+
+          if (p.factura) facturaCount++;
+
+          const perfil = p.perfil || "Cajero";
+          if (perfil === "Cajero") cajeros++;
+          else if (perfil === "Vendedor") vendedores++;
+          else if (perfil === "Red") redCount++;
+        });
+
+        f.elementList.forEach(el => {
+          const isEnabled = (typeof el.enabled === "boolean") ? el.enabled : true;
+          if (!isEnabled) return;
+
+          const t = (el.type || el.elementType || el.tipo || "").toUpperCase();
+          if (!t) return;
+
+          if (t === "CP") cpCount++;
+          else if (t === "KIOSCO") kioscoCount++;
+          else if (t === "CAV") cavCount++;
+          else if (t === "MEF") mefCount++;
+          else if (t === "PR") prCount++;
+        });
+      });
+
+      statHabilitadoEl.textContent = habilitados;
+      statDeshabilitadoEl.textContent = deshabilitados;
+      statEstacionalEl.textContent = estacionales;
+
+      sumPosCposEl.textContent = cpos;
+      sumPosScoEl.textContent = sco;
+      sumPosPosmEl.textContent = posm;
+      sumPosPosoutEl.textContent = posout;
+      sumPosFacturaEl.textContent = facturaCount;
+      sumPosPerfilCajeroEl.textContent = cajeros;
+      sumPosPerfilVendedorEl.textContent = vendedores;
+      sumPosPerfilRedEl.textContent = redCount;
+
+      sumElCpEl.textContent = cpCount;
+      sumElKioscoEl.textContent = kioscoCount;
+      sumElCavEl.textContent = cavCount;
+      sumElMefEl.textContent = mefCount;
+      sumElPrEl.textContent = prCount;
+    }
+
+    // ===== Buscar POS por número y hacerlo brillar 5s =====
+    function normalizePosNumber(n) {
+      const v = String(n).trim();
+      if (v === "") return null;
+      const num = Number(v);
+      if (Number.isNaN(num) || num < 0 || num > 999) return null;
+      return String(Math.min(num, 999));
+    }
+
+    function clearAllPosFiltersToShow() {
+      filters = { brand: "ALL", tipo: "ALL", perfil: "ALL", estado: "ALL", factura: "ALL" };
+      filterBrandEl.value = "ALL";
+      filterTipoEl.value = "ALL";
+      filterPerfilEl.value = "ALL";
+      filterEstadoEl.value = "ALL";
+      filterFacturaEl.value = "ALL";
+    }
+
+    function findPosByNumberAcrossFloors(numberStr) {
+      for (const floor of state.floors) {
+        const pos = (floor.posList || []).find(p => String(p.number) === numberStr);
+        if (pos) return { floorId: floor.id, posId: pos.id };
+      }
+      return null;
+    }
+
+    function highlightPosById(posId) {
+      if (highlightTimeout) {
+        clearTimeout(highlightTimeout);
+        highlightTimeout = null;
+      }
+      const prev = mapInnerEl.querySelector(".pos-icon.highlight");
+      if (prev) prev.classList.remove("highlight");
+
+      const el = mapInnerEl.querySelector(`.pos-icon[data-pos-id="${posId}"]`);
+      if (!el) return false;
+
+      try { el.scrollIntoView({ behavior: "smooth", block: "center", inline: "center" }); } catch (_) {}
+
+      el.classList.remove("highlight");
+      void el.offsetWidth;
+      el.classList.add("highlight");
+
+      highlightTimeout = setTimeout(() => {
+        el.classList.remove("highlight");
+        highlightTimeout = null;
+      }, 5000);
+
+      return true;
+    }
+
+    function runPosSearch() {
+      const normalized = normalizePosNumber(posSearchInputEl.value);
+      if (!normalized) {
+        alert("Ingresa un número de POS válido (0 a 999).");
+        return;
+      }
+
+      const found = findPosByNumberAcrossFloors(normalized);
+      if (!found) {
+        alert(`No encontré un POS con número ${normalized}.`);
+        return;
+      }
+
+      clearAllPosFiltersToShow();
+
+      if (state.activeFloorId !== found.floorId) {
+        state.activeFloorId = found.floorId;
+        saveState();
+        renderFloorTabs();
+        renderMap();
+      } else {
+        renderMap();
+      }
+
+      setTimeout(() => {
+        const ok = highlightPosById(found.posId);
+        if (!ok) {
+          renderMap();
+          setTimeout(() => highlightPosById(found.posId), 50);
+        }
+      }, 50);
+
+      searchPanelEl.classList.remove("show");
+    }
+
+    btnPosSearchEl.addEventListener("click", (e) => {
+      e.stopPropagation();
+      filterPanelEl.classList.remove("show");
+      elementFilterPanelEl.classList.remove("show");
+      configPanelEl.classList.remove("show");
+
+      searchPanelEl.classList.toggle("show");
+      if (searchPanelEl.classList.contains("show")) {
+        setTimeout(() => posSearchInputEl.focus(), 0);
+      }
+    });
+
+    btnPosSearchGoEl.addEventListener("click", (e) => {
+      e.preventDefault();
+      runPosSearch();
+    });
+
+    posSearchInputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        runPosSearch();
+      } else if (e.key === "Escape") {
+        searchPanelEl.classList.remove("show");
+      }
+    });
+
+    // ===== Configuración POS =====
+    btnPosConfigEl.addEventListener("click", (e) => {
+      e.stopPropagation();
+      filterPanelEl.classList.remove("show");
+      elementFilterPanelEl.classList.remove("show");
+      searchPanelEl.classList.remove("show");
+
+      syncConfigUIFromState();
+      configPanelEl.classList.toggle("show");
+    });
+
+    btnCfgResetEl.addEventListener("click", (e) => {
+      e.preventDefault();
+      posIconCfg = { ...DEFAULT_POS_ICON_CFG };
+      syncConfigUIFromState();
+    });
+
+    btnCfgApplyEl.addEventListener("click", (e) => {
+      e.preventDefault();
+      posIconCfg.midField = cfgPosMidFieldEl.value;
+      posIconCfg.iconSize = cfgPosIconSizeEl.value;
+      posIconCfg.fontSize = cfgPosFontSizeEl.value;
+
+      savePosIconConfig(posIconCfg);
+      configPanelEl.classList.remove("show");
+      renderMap();
+    });
+
+    // Filtros POS
+    btnFilterEl.addEventListener("click", e => {
+      e.stopPropagation();
+      elementFilterPanelEl.classList.remove("show");
+      searchPanelEl.classList.remove("show");
+      configPanelEl.classList.remove("show");
+      filterPanelEl.classList.toggle("show");
+    });
+
+    btnApplyFilterEl.addEventListener("click", () => {
+      filters.brand = filterBrandEl.value;
+      filters.tipo = filterTipoEl.value;
+      filters.perfil = filterPerfilEl.value;
+      filters.estado = filterEstadoEl.value;
+      filters.factura = filterFacturaEl.value;
+      filterPanelEl.classList.remove("show");
+      renderMap();
+    });
+
+    btnClearFilterEl.addEventListener("click", () => {
+      filters = { brand: "ALL", tipo: "ALL", perfil: "ALL", estado: "ALL", factura: "ALL" };
+      filterBrandEl.value = "ALL";
+      filterTipoEl.value = "ALL";
+      filterPerfilEl.value = "ALL";
+      filterEstadoEl.value = "ALL";
+      filterFacturaEl.value = "ALL";
+      filterPanelEl.classList.remove("show");
+      renderMap();
+    });
+
+    // Filtros elementos
+    btnElementFilterEl.addEventListener("click", e => {
+      e.stopPropagation();
+      filterPanelEl.classList.remove("show");
+      searchPanelEl.classList.remove("show");
+      configPanelEl.classList.remove("show");
+      elementFilterPanelEl.classList.toggle("show");
+    });
+
+    btnApplyElementFilterEl.addEventListener("click", () => {
+      elementFilters.type = elementFilterTypeEl.value;
+      elementFilters.estado = elementFilterEstadoEl.value;
+      elementFilterPanelEl.classList.remove("show");
+      renderMap();
+    });
+
+    btnClearElementFilterEl.addEventListener("click", () => {
+      elementFilters = { type: "ALL", estado: "ALL" };
+      elementFilterTypeEl.value = "ALL";
+      elementFilterEstadoEl.value = "ALL";
+      elementFilterPanelEl.classList.remove("show");
+      renderMap();
+    });
+
+    // cerrar paneles al click fuera
+    document.addEventListener("click", e => {
+      if (filterPanelEl.classList.contains("show") && !filterPanelEl.contains(e.target) && e.target !== btnFilterEl) {
+        filterPanelEl.classList.remove("show");
+      }
+      if (elementFilterPanelEl.classList.contains("show") && !elementFilterPanelEl.contains(e.target) && e.target !== btnElementFilterEl) {
+        elementFilterPanelEl.classList.remove("show");
+      }
+      if (searchPanelEl.classList.contains("show") && !searchPanelEl.contains(e.target) && e.target !== btnPosSearchEl) {
+        searchPanelEl.classList.remove("show");
+      }
+      if (configPanelEl.classList.contains("show") && !configPanelEl.contains(e.target) && e.target !== btnPosConfigEl) {
+        configPanelEl.classList.remove("show");
+      }
+    });
+
+    // Pisos
+    btnAddFloorEl.addEventListener("click", () => {
+      const newId = uuid();
+      const n = state.floors.length + 1;
+      state.floors.push({ id: newId, name: "Piso " + n, background: null, posList: [], elementList: [] });
+      state.activeFloorId = newId;
+      saveState();
+      renderFloorTabs();
+      renderMap();
+    });
+
+    btnEditFloorEl.addEventListener("click", () => {
+      const floor = getActiveFloor();
+      if (!floor) return;
+
+      const activeTab = floorTabsEl.querySelector(".floor-tab.active");
+      if (!activeTab) return;
+
+      const originalName = floor.name;
+      activeTab.contentEditable = "true";
+      activeTab.focus();
+
+      const range = document.createRange();
+      range.selectNodeContents(activeTab);
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(range);
+
+      function finishEdit(commit) {
+        activeTab.contentEditable = "false";
+        activeTab.removeEventListener("blur", onBlur);
+        activeTab.removeEventListener("keydown", onKeyDown);
+
+        if (!commit) { activeTab.textContent = originalName; return; }
+        const nuevoNombre = activeTab.textContent.trim();
+        if (!nuevoNombre) { activeTab.textContent = originalName; return; }
+        floor.name = nuevoNombre;
+        saveState();
+        renderFloorTabs();
+        renderMap();
+      }
+
+      function onBlur() { finishEdit(true); }
+      function onKeyDown(e) {
+        if (e.key === "Enter") { e.preventDefault(); finishEdit(true); }
+        else if (e.key === "Escape") { e.preventDefault(); finishEdit(false); }
+      }
+
+      activeTab.addEventListener("blur", onBlur);
+      activeTab.addEventListener("keydown", onKeyDown);
+    });
+
+    btnDeleteFloorEl.addEventListener("click", () => {
+      if (state.floors.length <= 1) { alert("Debe existir al menos un piso."); return; }
+
+      let message = "Elige el número de piso a eliminar:\n";
+      state.floors.forEach((f, idx) => { message += `${idx + 1}. ${f.name}\n`; });
+
+      const input = prompt(message);
+      if (!input) return;
+      const index = parseInt(input, 10) - 1;
+      if (isNaN(index) || index < 0 || index >= state.floors.length) { alert("Selección no válida."); return; }
+
+      const floorToDelete = state.floors[index];
+      if (!confirm(`¿Eliminar "${floorToDelete.name}" y todos sus POS y elementos?`)) return;
+
+      state.floors.splice(index, 1);
+      if (state.activeFloorId === floorToDelete.id && state.floors.length > 0) state.activeFloorId = state.floors[0].id;
+
+      saveState();
+      renderFloorTabs();
+      renderMap();
+    });
+
+    // Exportar / Importar estado
+    function exportStateToFile() {
+      try {
+        const payload = { version: 2, data: state };
+        const json = JSON.stringify(payload, null, 2);
+        const blob = new Blob([json], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+        a.href = url;
+        a.download = `mapa_pos_paris_${ts}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error("Error al exportar estado", err);
+        alert("Ocurrió un error al exportar el layout.");
+      }
+    }
+
+    function importStateFromFile(file) {
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const text = ev.target.result;
+          const parsed = JSON.parse(text);
+
+          let imported = null;
+          if (parsed && parsed.data && Array.isArray(parsed.data.floors)) imported = parsed.data;
+          else if (parsed && Array.isArray(parsed.floors)) imported = parsed;
+
+          if (!imported || !Array.isArray(imported.floors) || imported.floors.length === 0) {
+            alert("El archivo seleccionado no contiene un layout válido.");
+            return;
+          }
+
+          imported.floors.forEach(f => {
+            if (!f.posList) f.posList = [];
+            if (!f.elementList) f.elementList = [];
+
+            f.posList.forEach(p => {
+              if (!p.perfil) p.perfil = "Cajero";
+              p.estado = normalizePosEstado(p);
+            });
+
+            f.elementList.forEach(el => {
+              if (typeof el.enabled !== "boolean") {
+                if (typeof el.habilitado === "boolean") el.enabled = !!el.habilitado;
+                else el.enabled = true;
+              }
+            });
+          });
+
+          state = imported;
+
+          if (!state.activeFloorId || !state.floors.some(f => f.id === state.activeFloorId)) {
+            state.activeFloorId = state.floors[0].id;
+          }
+
+          saveState();
+          renderFloorTabs();
+          renderMap();
+          alert("Layout importado correctamente.");
+        } catch (err) {
+          console.error("Error al importar estado", err);
+          alert("No se pudo leer el archivo de layout. Verifica que sea un JSON válido.");
+        } finally {
+          importFileEl.value = "";
+        }
+      };
+      reader.readAsText(file, "utf-8");
+    }
+
+    btnExportStateEl.addEventListener("click", exportStateToFile);
+    btnImportStateEl.addEventListener("click", () => importFileEl.click());
+    importFileEl.addEventListener("change", e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      importStateFromFile(file);
+    });
+
+    // Cierre tooltip al click fuera
+    document.body.addEventListener("click", e => {
+      if (currentTooltip && !e.target.closest(".pos-icon") && !e.target.closest(".element-icon") && !e.target.closest(".pos-tooltip")) {
+        currentTooltip.remove();
+        currentTooltip = null;
+        tooltipPinned = false;
+        tooltipPinnedIcon = null;
+      }
+    });
+
+    function runSelfTests() {
+      const d = defaultState();
+      console.assert(Array.isArray(d.floors) && d.floors.length >= 1, "defaultState debe crear al menos un piso");
+      const id1 = uuid();
+      const id2 = uuid();
+      console.assert(id1 !== id2, "uuid debe generar valores distintos consecutivos");
+    }
+
+    runSelfTests();
+    syncConfigUIFromState();
+    loadState();
+    renderFloorTabs();
+    renderMap();
+  </script>
+</body>
+</html>
