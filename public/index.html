@@ -2616,6 +2616,15 @@
       console.assert(id1 !== id2, "uuid debe generar valores distintos consecutivos");
     }
 
+    // Refuerzo de persistencia local: además de guardar en cada cambio,
+    // hacemos un último guardado al ocultar/cerrar la pestaña.
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden" && state) saveState();
+    });
+    window.addEventListener("pagehide", () => {
+      if (state) saveState();
+    });
+
     runSelfTests();
     syncConfigUIFromState();
     loadState();
