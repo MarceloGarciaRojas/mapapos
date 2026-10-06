@@ -108,6 +108,38 @@
       font-weight: 500;
     }
 
+    .btn-save-local {
+      width: 30px;
+      height: 30px;
+      border-radius: 999px;
+      border: 1px solid var(--border-soft);
+      background: #fff;
+      color: var(--text-main);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      font-size: 15px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 3px 10px rgba(15, 23, 42, 0.08);
+      transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      flex: 0 0 auto;
+    }
+
+    .btn-save-local:hover {
+      transform: translateY(-1px);
+      background: #f8fafc;
+      border-color: #cbd5e1;
+      box-shadow: 0 5px 14px rgba(15, 23, 42, 0.12);
+    }
+
+    .btn-save-local.saved {
+      background: #dcfce7;
+      border-color: #86efac;
+      transform: scale(1.05);
+    }
+
     .stat-dot {
       width: 9px;
       height: 9px;
@@ -852,6 +884,7 @@
 
       <div class="top-right">
         <div class="stats">
+          <button class="btn-save-local" id="btnSaveLocal" type="button" title="Guardar cambios en este equipo" aria-label="Guardar cambios en este equipo">💾</button>
           <div class="stat-chip" id="stat-habilitado">
             <span class="stat-dot green"></span>
             <span>Habilitados: <strong>0</strong></span>
@@ -1293,6 +1326,30 @@
       }
     }
 
+    function saveEverythingLocally() {
+      saveState();
+      savePosIconConfig(posIconCfg);
+
+      if (btnSaveLocalEl) {
+        btnSaveLocalEl.classList.add("saved");
+        btnSaveLocalEl.textContent = "✓";
+        btnSaveLocalEl.title = "Cambios guardados en este equipo";
+        setTimeout(() => {
+          btnSaveLocalEl.classList.remove("saved");
+          btnSaveLocalEl.textContent = "💾";
+          btnSaveLocalEl.title = "Guardar cambios en este equipo";
+        }, 1200);
+      }
+    }
+
+    if (btnSaveLocalEl) {
+      btnSaveLocalEl.addEventListener("click", e => {
+        e.preventDefault();
+        e.stopPropagation();
+        saveEverythingLocally();
+      });
+    }
+
     function uuid() {
       return "id-" + Math.random().toString(36).slice(2, 10);
     }
@@ -1342,6 +1399,7 @@
     const btnImportStateEl = document.getElementById("btnImportState");
     const importFileEl = document.getElementById("importFile");
 
+    const btnSaveLocalEl = document.getElementById("btnSaveLocal");
     const statHabilitadoEl = document.querySelector("#stat-habilitado strong");
     const statDeshabilitadoEl = document.querySelector("#stat-deshabilitado strong");
     const statEstacionalEl = document.querySelector("#stat-estacional strong");
