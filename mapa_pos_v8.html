@@ -1217,6 +1217,10 @@
 
   <script>
     const STORAGE_KEY = "pos_floorplan_state_v2";
+    const DB_NAME = "mapapos_local_db";
+    const DB_VERSION = 1;
+    const DB_STORE = "app_state";
+    const DB_STATE_KEY = "current_state";
 
     // Config íconos POS
     const POS_ICON_CFG_KEY = "pos_icon_config_v1";
@@ -1288,41 +1292,131 @@
 
     let highlightTimeout = null;
 
-    function loadState() {
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        state = stored ? JSON.parse(stored) : defaultState();
-        if (!state.floors) state = defaultState();
+    function openStateDb() {
+      return new Promise((resolve, reject) => {
+        if (!("indexedDB" in window)) {
+          reject(new Error("IndexedDB no disponible"));
+          return;
+        }
 
-        state.floors.forEach(f => {
-          if (!f.posList) f.posList = [];
-          if (!f.elementList) f.elementList = [];
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
 
-          f.posList.forEach(p => {
-            if (!p.perfil) p.perfil = "Cajero";
-            p.estado = normalizePosEstado(p);
-          });
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains(DB_STORE)) {
+            db.createObjectStore(DB_STORE);
+          }
+        };
 
-          f.elementList.forEach(el => {
-            if (typeof el.enabled !== "boolean") {
-              if (typeof el.habilitado === "boolean") el.enabled = !!el.habilitado;
-              else el.enabled = true;
-            }
-          });
-        });
-      } catch (e) {
-        console.error("Error cargando estado, usando estado por defecto", e);
-        state = defaultState();
-      }
-      saveState();
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error || new Error("No se pudo abrir IndexedDB"));
+      });
     }
 
-    function saveState() {
+    async function readStateFromIndexedDb() {
+      const db = await openStateDb();
+      try {
+        return await new Promise((resolve, reject) => {
+          const tx = db.transaction(DB_STORE, "readonly");
+          const store = tx.objectStore(DB_STORE);
+          const request = store.get(DB_STATE_KEY);
+
+          request.onsuccess = () => resolve(request.result || null);
+          request.onerror = () => reject(request.error || new Error("No se pudo leer el estado"));
+        });
+      } finally {
+        db.close();
+      }
+    }
+
+    async function writeStateToIndexedDb(snapshot) {
+      const db = await openStateDb();
+      try {
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(DB_STORE, "readwrite");
+          tx.objectStore(DB_STORE).put(snapshot, DB_STATE_KEY);
+
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error || new Error("No se pudo guardar el estado"));
+          tx.onabort = () => reject(tx.error || new Error("Guardado cancelado"));
+        });
+      } finally {
+        db.close();
+      }
+    }
+
+    function normalizeLoadedState(loadedState) {
+      if (!loadedState || typeof loadedState !== "object" || !Array.isArray(loadedState.floors)) {
+        return defaultState();
+      }
+
+      loadedState.floors.forEach(f => {
+        if (!f.posList) f.posList = [];
+        if (!f.elementList) f.elementList = [];
+
+        f.posList.forEach(p => {
+          if (!p.perfil) p.perfil = "Cajero";
+          p.estado = normalizePosEstado(p);
+        });
+
+        f.elementList.forEach(el => {
+          if (typeof el.enabled !== "boolean") {
+            if (typeof el.habilitado === "boolean") el.enabled = !!el.habilitado;
+            else el.enabled = true;
+          }
+        });
+      });
+
+      if (!loadedState.activeFloorId || !loadedState.floors.some(f => f.id === loadedState.activeFloorId)) {
+        loadedState.activeFloorId = loadedState.floors[0]?.id || "floor-1";
+      }
+
+      return loadedState;
+    }
+
+    async function loadState() {
+      let loadedState = null;
+
+      try {
+        loadedState = await readStateFromIndexedDb();
+      } catch (e) {
+        console.warn("No se pudo leer IndexedDB, se intentará localStorage", e);
+      }
+
+      if (!loadedState) {
+        try {
+          const stored = localStorage.getItem(STORAGE_KEY);
+          loadedState = stored ? JSON.parse(stored) : null;
+        } catch (e) {
+          console.warn("No se pudo leer localStorage", e);
+        }
+      }
+
+      state = normalizeLoadedState(loadedState || defaultState());
+
+      // Migra y refuerza el estado actual en IndexedDB.
+      await saveState();
+    }
+
+    async function saveState() {
+      if (!state) return false;
+
+      updateStats();
+
+      // localStorage se mantiene como respaldo para estados pequeños.
+      // Si el plano en base64 supera la cuota, IndexedDB sigue guardando todo.
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-        updateStats();
       } catch (e) {
-        console.error("Error guardando estado", e);
+        console.warn("localStorage sin espacio suficiente; se usará IndexedDB", e);
+      }
+
+      try {
+        await writeStateToIndexedDb(state);
+        return true;
+      } catch (e) {
+        console.error("Error guardando estado en IndexedDB", e);
+        return false;
       }
     }
 
@@ -1378,27 +1472,38 @@
     const btnSaveLocalEl = document.getElementById("btnSaveLocal");
     const statHabilitadoEl = document.querySelector("#stat-habilitado strong");
 
-    function saveEverythingLocally() {
-      saveState();
-      savePosIconConfig(posIconCfg);
+    async function saveEverythingLocally() {
+      const stateSaved = await saveState();
 
-      if (btnSaveLocalEl) {
-        btnSaveLocalEl.classList.add("saved");
-        btnSaveLocalEl.textContent = "✓";
-        btnSaveLocalEl.title = "Cambios guardados en este equipo";
-        setTimeout(() => {
-          btnSaveLocalEl.classList.remove("saved");
-          btnSaveLocalEl.textContent = "💾";
-          btnSaveLocalEl.title = "Guardar cambios en este equipo";
-        }, 1200);
+      let configSaved = true;
+      try {
+        savePosIconConfig(posIconCfg);
+      } catch (e) {
+        configSaved = false;
+        console.error("Error guardando configuración de íconos", e);
+      }
+
+      if (stateSaved && configSaved) {
+        if (btnSaveLocalEl) {
+          btnSaveLocalEl.classList.add("saved");
+          btnSaveLocalEl.textContent = "✓";
+          btnSaveLocalEl.title = "Cambios guardados en este equipo";
+          setTimeout(() => {
+            btnSaveLocalEl.classList.remove("saved");
+            btnSaveLocalEl.textContent = "💾";
+            btnSaveLocalEl.title = "Guardar cambios en este equipo";
+          }, 1200);
+        }
+      } else {
+        alert("No fue posible guardar los cambios en este equipo. Revisa los permisos de almacenamiento del navegador.");
       }
     }
 
     if (btnSaveLocalEl) {
-      btnSaveLocalEl.addEventListener("click", e => {
+      btnSaveLocalEl.addEventListener("click", async e => {
         e.preventDefault();
         e.stopPropagation();
-        saveEverythingLocally();
+        await saveEverythingLocally();
       });
     }
     const statDeshabilitadoEl = document.querySelector("#stat-deshabilitado strong");
@@ -2676,17 +2781,25 @@
     // Refuerzo de persistencia local: además de guardar en cada cambio,
     // hacemos un último guardado al ocultar/cerrar la pestaña.
     document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "hidden" && state) saveState();
-    });
-    window.addEventListener("pagehide", () => {
-      if (state) saveState();
+      if (document.visibilityState === "hidden" && state) {
+        saveState().catch(() => {});
+      }
     });
 
-    runSelfTests();
-    syncConfigUIFromState();
-    loadState();
-    renderFloorTabs();
-    renderMap();
+    async function initApp() {
+      runSelfTests();
+      syncConfigUIFromState();
+      await loadState();
+      renderFloorTabs();
+      renderMap();
+    }
+
+    initApp().catch(e => {
+      console.error("Error iniciando la aplicación", e);
+      state = defaultState();
+      renderFloorTabs();
+      renderMap();
+    });
   </script>
 </body>
 </html>
