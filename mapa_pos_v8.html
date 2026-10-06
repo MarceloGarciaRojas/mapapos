@@ -1326,30 +1326,6 @@
       }
     }
 
-    function saveEverythingLocally() {
-      saveState();
-      savePosIconConfig(posIconCfg);
-
-      if (btnSaveLocalEl) {
-        btnSaveLocalEl.classList.add("saved");
-        btnSaveLocalEl.textContent = "✓";
-        btnSaveLocalEl.title = "Cambios guardados en este equipo";
-        setTimeout(() => {
-          btnSaveLocalEl.classList.remove("saved");
-          btnSaveLocalEl.textContent = "💾";
-          btnSaveLocalEl.title = "Guardar cambios en este equipo";
-        }, 1200);
-      }
-    }
-
-    if (btnSaveLocalEl) {
-      btnSaveLocalEl.addEventListener("click", e => {
-        e.preventDefault();
-        e.stopPropagation();
-        saveEverythingLocally();
-      });
-    }
-
     function uuid() {
       return "id-" + Math.random().toString(36).slice(2, 10);
     }
@@ -1401,6 +1377,30 @@
 
     const btnSaveLocalEl = document.getElementById("btnSaveLocal");
     const statHabilitadoEl = document.querySelector("#stat-habilitado strong");
+
+    function saveEverythingLocally() {
+      saveState();
+      savePosIconConfig(posIconCfg);
+
+      if (btnSaveLocalEl) {
+        btnSaveLocalEl.classList.add("saved");
+        btnSaveLocalEl.textContent = "✓";
+        btnSaveLocalEl.title = "Cambios guardados en este equipo";
+        setTimeout(() => {
+          btnSaveLocalEl.classList.remove("saved");
+          btnSaveLocalEl.textContent = "💾";
+          btnSaveLocalEl.title = "Guardar cambios en este equipo";
+        }, 1200);
+      }
+    }
+
+    if (btnSaveLocalEl) {
+      btnSaveLocalEl.addEventListener("click", e => {
+        e.preventDefault();
+        e.stopPropagation();
+        saveEverythingLocally();
+      });
+    }
     const statDeshabilitadoEl = document.querySelector("#stat-deshabilitado strong");
     const statEstacionalEl = document.querySelector("#stat-estacional strong");
 
